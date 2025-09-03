@@ -71,26 +71,37 @@ var key string = os.Getenv("STEAM_API_KEY")
 
 func GetInfo() {
 	list := friendList(mySteamID)
-	fmt.Println(list)
 	id := "76561198082191202"
 	playerInfo := playerSummary(id)
 	fmt.Println(playerInfo.PlayerSummaryResponse.Players[0].PersonaName)
-	fmt.Printf("Last logged in on: %v", unixToTime(playerInfo.PlayerSummaryResponse.Players[0].LastLogoff))
+	fmt.Println(playerInfo.PlayerSummaryResponse.Players[0].CommunityVisibilityState)
+	fmt.Println(playerInfo.PlayerSummaryResponse.Players[0].PersonaState)
+	fmt.Printf("Last logged in on: %v\n", unixToTime(playerInfo.PlayerSummaryResponse.Players[0].LastLogoff))
 
 	result := recentlyPlayed(id)
-	// fmt.Println(result)
 	for i, game := range result.RecentGamesResponse.Games {
 		fmt.Printf("\n-------\nID: %v\n%s\nPast 2 weeks: %v hours\nTotal Playtime: %v hours", i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
 
 	}
+	for i, friend := range list.FriendListResponse.FriendList {
+		summary := playerSummary(friend.FriendSteamID)
+		recent := recentlyPlayed(friend.FriendSteamID)
+
+		fmt.Printf("\n\n~~~~\nID: %v\n%s:\n", i, summary.PlayerSummaryResponse.Players[0].PersonaName)
+		for i, game := range recent.RecentGamesResponse.Games {
+			fmt.Printf("-------\nID: %v\n%s\nPast 2 weeks: %v hours\nTotal Playtime: %v hours\n", i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
+
+		}
+	}
 
 }
 
-func unixToTime(unix int64) (timeReturn time.Time) {
+func unixToTime(unix int64) string {
 	loc, _ := time.LoadLocation("Europe/London")
-	timeReturn = time.Unix(unix, 0).In(loc)
+	timeReturn := time.Unix(unix, 0).In(loc)
+	result := timeReturn.Format("15:04 PM 02/01/06")
 
-	return timeReturn
+	return result
 }
 
 func playerSummary(steamid string) PlayerSummary {
@@ -129,9 +140,24 @@ func recentlyPlayed(steamid string) RecentGames {
 		panic(err)
 	}
 	return result
-
 }
 
+func ownedGames(steamid string) RecentGames {
+	var result RecentGames
+	url := "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=" + key + "&steamid=" + steamid + "&format=json&include_appinfo=true"
+	resp, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body)
+
+	err = json.Unmarshal(bodyBytes, &result)
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
 func friendList(steamid string) FriendListResponse {
 	var result FriendListResponse
 	url := "http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=" + key + "&steamid=" + steamid + "&relationship=friend"
@@ -144,5 +170,27 @@ func friendList(steamid string) FriendListResponse {
 	fmt.Println(string(bodyBytes))
 	json.Unmarshal(bodyBytes, &result)
 	return result
+}
 
+func personaStateStr(personaState int) string {
+	personas := map[int]string{
+		0: "Offline",
+		1: "Online",
+		2: "Busy",
+		3: "Away",
+		4: "Snooze",
+		5: "Looking2Trade",
+		6: "Looking2Play",
+	}
+	return personas[personaState]
+}
+
+func communityVisibilityState(state int) string {
+	switch state {
+	case 1:
+		return "Private"
+	case 2:
+		return "Public"
+	}
+	return ""
 }
