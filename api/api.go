@@ -1,5 +1,6 @@
 package api
 
+// https://developer.valvesoftware.com/wiki/Steam_Web_API#GetPlayerSummaries_.28v0001.29
 import (
 	// "encoding/json"
 	"encoding/json"
@@ -71,6 +72,9 @@ var key string = os.Getenv("STEAM_API_KEY")
 
 func GetInfo() {
 	list := friendList(mySteamID)
+	friends := list.FriendListResponse.FriendList
+	mostPlayed2Weeks(friends)
+
 	id := "76561198082191202"
 	playerInfo := playerSummary(id)
 	fmt.Println(playerInfo.PlayerSummaryResponse.Players[0].PersonaName)
@@ -78,18 +82,26 @@ func GetInfo() {
 	fmt.Println(playerInfo.PlayerSummaryResponse.Players[0].PersonaState)
 	fmt.Printf("Last logged in on: %v\n", unixToTime(playerInfo.PlayerSummaryResponse.Players[0].LastLogoff))
 
-	result := recentlyPlayed(id)
-	for i, game := range result.RecentGamesResponse.Games {
-		fmt.Printf("\n-------\nID: %v\n%s\nPast 2 weeks: %v hours\nTotal Playtime: %v hours", i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
+	// result := recentlyPlayed(id)
+	// for i, game := range result.RecentGamesResponse.Games {
+	// 	fmt.Printf("\n-------\nID: %v\n%s\nPast 2 weeks: %v hours\nTotal Playtime: %v hours", i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
 
-	}
+	// }
+	counter := 1
 	for i, friend := range list.FriendListResponse.FriendList {
 		summary := playerSummary(friend.FriendSteamID)
 		recent := recentlyPlayed(friend.FriendSteamID)
+		if len(recent.RecentGamesResponse.Games) == 0 {
+			i -= 1
+			continue
+		}
 
-		fmt.Printf("\n\n~~~~\nID: %v\n%s:\n", i, summary.PlayerSummaryResponse.Players[0].PersonaName)
+		fmt.Printf("\n\n~~~~\nFriend ID: %v\n%s:\n", counter, summary.PlayerSummaryResponse.Players[0].PersonaName)
+		counter++
+
 		for i, game := range recent.RecentGamesResponse.Games {
-			fmt.Printf("-------\nID: %v\n%s\nPast 2 weeks: %v hours\nTotal Playtime: %v hours\n", i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
+
+			fmt.Printf("-------\nGame ID: %v\n%s\nPast 2 weeks: %v hours\nTotal Playtime: %v hours\n", i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
 
 		}
 	}
@@ -167,7 +179,7 @@ func friendList(steamid string) FriendListResponse {
 	}
 	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
-	fmt.Println(string(bodyBytes))
+	// fmt.Println(string(bodyBytes))
 	json.Unmarshal(bodyBytes, &result)
 	return result
 }
@@ -193,4 +205,25 @@ func communityVisibilityState(state int) string {
 		return "Public"
 	}
 	return ""
+}
+
+func mostPlayed2Weeks(friends []Friend) {
+	// add concurrent API calls
+	var maxPlaytime int
+	var topPlayerName string
+
+	for _, friend := range friends {
+		summary := playerSummary(friend.FriendSteamID)
+		totalPlaytime := 0
+		recent := recentlyPlayed(friend.FriendSteamID)
+		for _, game := range recent.RecentGamesResponse.Games {
+			totalPlaytime += game.Playtime2Week
+		}
+		if totalPlaytime > maxPlaytime {
+			topPlayerName = summary.PlayerSummaryResponse.Players[0].PersonaName
+			maxPlaytime = totalPlaytime
+		}
+
+	}
+	fmt.Println(topPlayerName, maxPlaytime/60)
 }
