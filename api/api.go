@@ -34,7 +34,6 @@ type RecentGamesResult struct {
 	TotalCount int    `json:"total_count"`
 	Games      []Game `json:"games"`
 }
-
 type Game struct {
 	AppID           int    `json:"appid"`
 	Name            string `json:"name"`
