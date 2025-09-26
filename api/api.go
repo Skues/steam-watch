@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
+	"sync"
 	"time"
 )
 
@@ -68,10 +70,17 @@ type Player struct {
 	LocCountryCode           string `json:"loccountrycode"`
 }
 
+type Result struct {
+	Index   int
+	Summary PlayerSummary
+	Recent  RecentGames
+}
+
 var key string = os.Getenv("STEAM_API_KEY")
 
 func GetInfo() {
 	list := friendList(mySteamID)
+	fmt.Println(list)
 	// friends := list.FriendListResponse.FriendList
 	// mostPlayed2Weeks(friends)
 
@@ -88,30 +97,70 @@ func GetInfo() {
 
 	// }
 	// counter := 1
-	summaries := make(chan PlayerSummary)
-	for i, friend := range list.FriendListResponse.FriendList {
-		go playerSummary(friend.FriendSteamID, summaries)
+	resultList := make([]Result, len(list.FriendListResponse.FriendList))
 
-		recent := recentlyPlayed(friend.FriendSteamID)
+	resultChan := make(chan Result, len(list.FriendListResponse.FriendList))
+	var wg sync.WaitGroup
+	for i, friend := range list.FriendListResponse.FriendList {
+
+		wg.Add(1)
+		go func(index int, steamid string) {
+			defer wg.Done()
+			summary := playerSummary(steamid)
+			recent := recentlyPlayed(steamid)
+
+			resultChan <- Result{index, summary, recent}
+		}(i, friend.FriendSteamID)
+	}
+
+	wg.Wait()
+
+	close(resultChan)
+
+	for result := range resultChan {
+		resultList[result.Index] = result
+
+	}
+
+	mostPlayed := make(map[string]float64, 0)
+	for i, res := range resultList {
+		var playtime int
+		summary := res.Summary
+		recent := res.Recent
+
+		fmt.Printf("\n\n~~~~\nFriend ID: %v\n%v:\n", summary.PlayerSummaryResponse.Players[0].PersonaName, i)
+		fmt.Println(recent.RecentGamesResponse.Games)
+		fmt.Println(len(recent.RecentGamesResponse.Games))
+
 		if len(recent.RecentGamesResponse.Games) == 0 {
-			i -= 1
+			fmt.Println("No games played recently")
 			continue
 		}
-
-		// fmt.Printf("\n\n~~~~\nFriend ID: %v\n%s:\n", counter, summary.PlayerSummaryResponse.Players[0].PersonaName)
-		// counter++
-
-		// for i, game := range recent.RecentGamesResponse.Games {
-		//
-		// 	fmt.Printf("-------\nGame ID: %v\n%s\nPast 2 weeks: %v hours\nTotal Playtime: %v hours\n", i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
-		//
-		// }
-	}
-	for summary := range summaries {
-		fmt.Println(summary)
+		for i, game := range recent.RecentGamesResponse.Games {
+			fmt.Printf("-------\nGame ID: %v\n%s\nPast 2 weeks: %v hours\nTotal Playtime: %v hours\n", i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
+			playtime += game.Playtime2Week
+		}
+		fmt.Println(summary.PlayerSummaryResponse.Players[0].PersonaName, playtime)
+		mostPlayed[summary.PlayerSummaryResponse.Players[0].PersonaName] = float64(playtime) / 60
 
 	}
+	fmt.Println(mostPlayed)
+	type kv struct {
+		Key   string
+		Value float64
+	}
+	var ss []kv
+	for k, v := range mostPlayed {
+		ss = append(ss, kv{k, v})
+	}
 
+	sort.Slice(ss, func(i, j int) bool {
+		return ss[i].Value > ss[j].Value
+	})
+
+	for _, kv := range ss {
+		fmt.Printf("%s, %f\n", kv.Key, kv.Value)
+	}
 }
 
 func unixToTime(unix int64) string {
@@ -122,7 +171,7 @@ func unixToTime(unix int64) string {
 	return result
 }
 
-func playerSummary(steamid string, channel chan PlayerSummary) {
+func playerSummary(steamid string) PlayerSummary {
 	var result PlayerSummary
 	url := "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" + key + "&steamids=" + steamid
 	resp, err := http.Get(url)
@@ -139,7 +188,7 @@ func playerSummary(steamid string, channel chan PlayerSummary) {
 		panic(err)
 	}
 
-	channel <- result
+	return result
 
 }
 
@@ -218,11 +267,8 @@ func mostPlayed2Weeks(friends []Friend) {
 	var maxPlaytime int
 	var topPlayerName string
 
-	summary := make(chan PlayerSummary)
 	for _, friend := range friends {
-
-		playerSummary(friend.FriendSteamID, summary)
-		sum := <-summary
+		sum := playerSummary(friend.FriendSteamID)
 		totalPlaytime := 0
 		recent := recentlyPlayed(friend.FriendSteamID)
 		for _, game := range recent.RecentGamesResponse.Games {
