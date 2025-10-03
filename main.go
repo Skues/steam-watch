@@ -113,6 +113,7 @@ func main() {
 			for _, kv := range ss {
 				output += fmt.Sprintf("%s, %f\n", kv.Key, kv.Value)
 			}
+			fmt.Fprintln(os.Stdout, output)
 		}
 
 	} else {
