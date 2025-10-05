@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 	"steam/code/api"
+	"strings"
 )
 
 type kv struct {
@@ -50,9 +51,22 @@ func main() {
 		space := "~~~~~~~~~~~~~~~"
 		if *friendListCmd {
 			friendList := api.GetFriendList(*steamid)
+			var output string
 			for i, friend := range friendList.FriendListResponse.FriendList {
 				summary := api.GetPlayerSummary(friend.FriendSteamID)
-				fmt.Fprintf(os.Stdout, "%s\nNumber: %v\nName: %s\nFriend since: %s\nCurrently: %s\nRelationship: %s\n%s\n", space, i, summary.PlayerSummaryResponse.Players[0].PersonaName, api.UnixToTime(friend.FriendSince), api.PersonaStateStr(summary.PlayerSummaryResponse.Players[0].PersonaState), friend.Relationship, space)
+				state := api.CommunityVisibilityState(summary.PlayerSummaryResponse.Players[0].CommunityVisibilityState)
+				player := summary.PlayerSummaryResponse.Players[0]
+				output += fmt.Sprintf("%s\nNumber: %v\nName: %s\nFriend since: %s\nCurrently: %s\nRelationship: %s\n", space, i, summary.PlayerSummaryResponse.Players[0].PersonaName, api.UnixToTime(friend.FriendSince), api.PersonaStateStr(summary.PlayerSummaryResponse.Players[0].PersonaState), friend.Relationship)
+				if state == "Public" {
+					var currentlyPlaying string
+					if strings.TrimSpace(player.GameExtraInfo) == "" {
+						currentlyPlaying = "Nothing"
+					} else {
+						currentlyPlaying = player.GameExtraInfo
+					}
+					output += fmt.Sprintf("\nTime Created: %s\nCurrently playing: %s\nLocation: %s\n%s", api.UnixToTime(player.TimeCreated), currentlyPlaying, player.LocCountryCode, space)
+				}
+				fmt.Fprintln(os.Stdout, output)
 			}
 		}
 		if *playerSummaryCmd {
@@ -68,19 +82,20 @@ func main() {
 		}
 		if *recentlyPlayedCmd {
 			recentlyPlayed := api.GetRecentlyPlayed(*steamid)
-			fmt.Fprintf(os.Stdout, "Total Games:%v", recentlyPlayed.RecentGamesResponse.TotalCount)
+			fmt.Fprintf(os.Stdout, "Total Games:%v\n", recentlyPlayed.RecentGamesResponse.TotalCount)
 			output := ""
+
 			for i, game := range recentlyPlayed.RecentGamesResponse.Games {
-				output += fmt.Sprintf("%v\n%s:\nPlaytime 2 Weeks: %v\nPlaytime Overall:%v\n", i, game.Name, game.Playtime2Week, game.PlaytimeForever)
+				output += fmt.Sprintf("%s\n%v\n%s:\nPlaytime 2 Weeks: %v hours\nPlaytime Overall: %v hours\n", space, i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
 			}
 			fmt.Fprintln(os.Stdout, output)
 		}
 		if *ownedGamesCmd {
 			ownedGames := api.GetOwnedGames(*steamid)
-			fmt.Fprintf(os.Stdout, "Total Games:%v", ownedGames.RecentGamesResponse.TotalCount)
+			fmt.Fprintf(os.Stdout, "Total Games:%v\n", ownedGames.RecentGamesResponse.GamesCount)
 			output := ""
 			for i, game := range ownedGames.RecentGamesResponse.Games {
-				output += fmt.Sprintf("%v\n%s:\nPlaytime 2 Weeks: %v\nPlaytime Overall:%v\n", i, game.Name, game.Playtime2Week, game.PlaytimeForever)
+				output += fmt.Sprintf("%s\n%v\n%s:\nPlaytime 2 Weeks: %v hours\nPlaytime Overall: %v hours\n", space, i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
 			}
 			fmt.Fprintln(os.Stdout, output)
 		}
@@ -110,8 +125,8 @@ func main() {
 			}
 			ss := SortMap(mostPlayed)
 			var output string
-			for _, kv := range ss {
-				output += fmt.Sprintf("%s, %f\n", kv.Key, kv.Value)
+			for i, kv := range ss {
+				output += fmt.Sprintf("%v - %s, %f\n", i, kv.Key, kv.Value)
 			}
 			fmt.Fprintln(os.Stdout, output)
 		}

@@ -33,6 +33,7 @@ type RecentGames struct {
 }
 type RecentGamesResult struct {
 	TotalCount int    `json:"total_count"`
+	GamesCount int    `json:"game_count"`
 	Games      []Game `json:"games"`
 }
 type Game struct {
@@ -65,7 +66,7 @@ type Player struct {
 	RealName                 string `json:"realname"`
 	PrimaryClanID            string `json:"primaryclanid"`
 	TimeCreated              int64  `json:"timecreated"`
-	GameID                   int64  `json:"gameid"`
+	GameID                   string `json:"gameid"`
 	GameExtraInfo            string `json:"gameextrainfo"`
 	LocCountryCode           string `json:"loccountrycode"`
 	LocCityID                string `json:"loccityid"`
@@ -165,6 +166,7 @@ func GetPlayerSummary(steamid string) PlayerSummary {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(result.PlayerSummaryResponse.Players[0].GameID)
 
 	return result
 
@@ -248,7 +250,7 @@ func GetMostPlayed2Weeks(friends []Friend) {
 
 func GetOwnedGames(steamid string) RecentGames {
 	var result RecentGames
-	url := "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=" + key + "&steamid=" + steamid + "&format=json&include_appinfo=true"
+	url := "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=" + key + "&steamid=" + steamid + "&format=json&include_appinfo=true&include_played_free_games=false"
 	resp, err := http.Get(url)
 	if err != nil {
 		panic(err)
