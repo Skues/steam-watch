@@ -66,8 +66,8 @@ func main() {
 					}
 					output += fmt.Sprintf("\nTime Created: %s\nCurrently playing: %s\nLocation: %s\n%s", api.UnixToTime(player.TimeCreated), currentlyPlaying, player.LocCountryCode, space)
 				}
-				fmt.Fprintln(os.Stdout, output)
 			}
+			fmt.Fprintln(os.Stdout, output)
 		}
 		if *playerSummaryCmd {
 			playerSummary := api.GetPlayerSummary(*steamid)
