@@ -73,9 +73,33 @@ type Player struct {
 }
 
 type Result struct {
-	Index   int
-	Summary PlayerSummary
-	Recent  RecentGames
+	Index      int
+	FriendInfo Friend
+	Summary    PlayerSummary
+	Recent     RecentGames
+}
+
+type DetailedFriendList struct {
+	DetailedFriendList []DetailedFriend
+}
+
+type DetailedFriendTest struct {
+	FriendSteamID    string
+	Relationship     string
+	FriendSince      int64
+	SteamName        string
+	Status           string
+	LastLogoff       int64
+	TimeCreated      int64
+	Location         string
+	CurrentlyPlaying string
+	RecentGames      RecentGames
+}
+
+type DetailedFriend struct {
+	FriendDetails Friend
+	FriendSummary PlayerSummary
+	RecentGames   RecentGamesResult
 }
 
 var apiCalls = map[string]map[string]string{"GetFriendList": {"API Type": "ISteamUser", "version": "v0001", "steamid": "steamid"}, "GetPlayerSummaries": {"API Type": "ISteamUser", "version": "v0002", "steamid": "steamids"}, "GetOwnedGames": {"API Type": "IPlayerService", "version": "v0001", "steamid": "steamid"}, "GetRecentlyPlayedGames": {"API Type": "IPlayerService", "version": "v0001", "steamid": "steamid"}}
@@ -89,20 +113,20 @@ func GetCommunityState(steamid string) string {
 }
 
 func GetMostPlayed(steamid string) map[string]float64 {
-	results := FriendListPlaytime(steamid)
+	results := FriendListData(steamid)
 	mostPlayed := make(map[string]float64, 0)
-	for i, res := range results {
+	for i, res := range results.DetailedFriendList {
 		var playtime int
-		summary := res.Summary
-		recent := res.Recent
+		summary := res.FriendSummary
+		recent := res.RecentGames
 
 		fmt.Printf("\n\n~~~~\nFriend ID: %v\n%v:\n", summary.PlayerSummaryResponse.Players[0].PersonaName, i)
 
-		if len(recent.RecentGamesResponse.Games) == 0 {
+		if len(recent.Games) == 0 {
 			fmt.Println("No games played recently")
 			continue
 		}
-		for i, game := range recent.RecentGamesResponse.Games {
+		for i, game := range recent.Games {
 			fmt.Printf("-------\nGame ID: %v\n%s\nPast 2 weeks: %v hours\nTotal Playtime: %v hours\n", i+1, game.Name, game.Playtime2Week/60, game.PlaytimeForever/60)
 			playtime += game.Playtime2Week
 		}
@@ -112,9 +136,9 @@ func GetMostPlayed(steamid string) map[string]float64 {
 	return mostPlayed
 }
 
-func FriendListPlaytime(steamid string) []Result {
+func FriendListData(steamid string) DetailedFriendList {
 	list := GetFriendList(steamid)
-	resultList := make([]Result, len(list.FriendListResponse.FriendList))
+	var friendList DetailedFriendList
 
 	resultChan := make(chan Result, len(list.FriendListResponse.FriendList))
 	var wg sync.WaitGroup
@@ -126,7 +150,7 @@ func FriendListPlaytime(steamid string) []Result {
 			summary := GetPlayerSummary(steamid)
 			recent := GetRecentlyPlayed(steamid)
 
-			resultChan <- Result{index, summary, recent}
+			resultChan <- Result{index, friend, summary, recent}
 		}(i, friend.FriendSteamID)
 	}
 
@@ -135,10 +159,10 @@ func FriendListPlaytime(steamid string) []Result {
 	close(resultChan)
 
 	for result := range resultChan {
-		resultList[result.Index] = result
-
+		friend := DetailedFriend{FriendDetails: result.FriendInfo, FriendSummary: result.Summary, RecentGames: result.Recent.RecentGamesResponse}
+		friendList.DetailedFriendList = append(friendList.DetailedFriendList, friend)
 	}
-	return resultList
+	return friendList
 
 }
 
@@ -166,7 +190,6 @@ func GetPlayerSummary(steamid string) PlayerSummary {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(result.PlayerSummaryResponse.Players[0].GameID)
 
 	return result
 
