@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -20,11 +19,11 @@ const space = "~~~~~~~~~~~~~~~"
 // Main function
 func main() {
 	steamid := flag.String("id", "", "Enter user's SteamID")
-	functionCmd := flag.NewFlagSet("function", flag.ExitOnError)
 	friendListFlag := flag.NewFlagSet("FL", flag.ExitOnError)
 	summary := friendListFlag.Bool("s", false, "Shows a summary of a friendlist")
 	filter := friendListFlag.String("f", "", "Filter when showing friend list (online, offline) ")
-	friendListCmd := functionCmd.Bool("FL", false, "Friend list function")
+
+	functionCmd := flag.NewFlagSet("function", flag.ExitOnError)
 	playerSummaryCmd := functionCmd.Bool("PS", false, "Get player summary")
 	recentlyPlayedCmd := functionCmd.Bool("RS", false, "Get games recently played")
 	ownedGamesCmd := functionCmd.Bool("OG", false, "Get overall played games")
@@ -38,7 +37,7 @@ func main() {
 	flag.Parse()
 
 	if *steamid != "" {
-		fmt.Println("SteamID: ", *steamid)
+		fmt.Fprintf(os.Stdout, "Loaded Steam ID: %s", *steamid)
 	} else {
 		fileText, err := os.ReadFile("steamid.txt")
 		if err != nil {
@@ -46,8 +45,7 @@ func main() {
 			os.Exit(1)
 		}
 		*steamid = string(fileText)
-		fmt.Println(*steamid)
-
+		fmt.Fprintf(os.Stdout, "Loaded Steam ID: %s", *steamid)
 	}
 	if *steamid == "" {
 		fmt.Fprintln(os.Stderr, "No SteamID found from flag or local save.")
@@ -70,49 +68,22 @@ func main() {
 		} else if *filter != "" {
 			switch strings.ToLower(*filter) {
 			case "online":
+				output += "Showing whos online:\n"
 				newFriendList = SpecificFriendStatus(friendList, isOnline)
-
 			case "offline":
+				output += "Showing whos offline:\n"
 				newFriendList = SpecificFriendStatus(friendList, isOffline)
-
 			case "playing":
+				output += "Showing whos in-game:\n"
 				newFriendList = SpecificFriendStatus(friendList, isPlaying)
-
 			}
 			for _, friend := range newFriendList.DetailedFriendList {
 				output += fmt.Sprintf("%s\nName: %s\nCurrently: %s\nRelationship: %s\n", space, friend.FriendSummary.PlayerSummaryResponse.Players[0].PersonaName, api.PersonaStateStr(friend.FriendSummary.PlayerSummaryResponse.Players[0].PersonaState), friend.FriendDetails.Relationship)
-
 			}
 		}
 		fmt.Fprintln(os.Stdout, output)
 	} else if os.Args[1] == "function" {
 		functionCmd.Parse(os.Args[2:])
-		if *friendListCmd { // If the user has called the friend list command then:
-			friendList := api.FriendListData(*steamid)
-			f, err := os.Create("friendList.json")
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-			b, err := json.Marshal(friendList)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-			_, err = f.Write(b)
-			friendListNew := api.GetFriendList(*steamid) // Get the friend list using the user's SteamID
-			var output string
-			for i, friend := range friendListNew.FriendListResponse.FriendList {
-				summary := api.GetPlayerSummary(friend.FriendSteamID) // Get the summary of each friend
-				player := summary.PlayerSummaryResponse.Players[0]
-				state := api.CommunityVisibilityState(player.CommunityVisibilityState) // Find the state (Public, Private)
-				output += fmt.Sprintf("%s\nNumber: %v\nName: %s\nFriend since: %s\nCurrently: %s\nRelationship: %s\nLast Logoff: %s\n", space, i, player.PersonaName, api.UnixToTime(friend.FriendSince), api.PersonaStateStr(player.PersonaState), friend.Relationship, api.UnixToTime(player.LastLogoff))
-				if state == "Public" {
-					output += fmt.Sprintf("\nTime Created: %s\nCurrently playing: %s\nLocation: %s\n%s", api.UnixToTime(player.TimeCreated), player.GameExtraInfo, player.LocCountryCode, space)
-				}
-			}
-			fmt.Fprintln(os.Stdout, output)
-		}
 		if *playerSummaryCmd {
 			playerSummary := api.GetPlayerSummary(*steamid)
 			player := playerSummary.PlayerSummaryResponse.Players[0]
