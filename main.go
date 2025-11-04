@@ -1,12 +1,19 @@
 package main
 
+// Links for the TUI
+// https://github.com/charmbracelet/lipgloss
+// https://github.com/charmbracelet/bubbletea
+
 import (
 	"flag"
 	"fmt"
 	"os"
 	"sort"
 	"steam/code/api"
+	"steam/code/tui"
 	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 type kv struct {
@@ -16,8 +23,26 @@ type kv struct {
 
 const space = "~~~~~~~~~~~~~~~"
 
+func Run() {
+	p := tea.NewProgram(tui.New())
+	m, err := p.Run()
+
+	if err != nil {
+		fmt.Printf("error %v", err)
+		os.Exit(1)
+	}
+	if model, ok := m.(tui.RootModel); ok {
+		input := model.Input
+		if input != "" {
+			fmt.Println("IS it valid?\n", api.ValidateSteamID(model.Input))
+		}
+	}
+
+}
+
 // Main function
 func main() {
+	Run()
 	steamid := flag.String("id", "", "Enter user's SteamID")
 	friendListFlag := flag.NewFlagSet("FL", flag.ExitOnError)
 	summary := friendListFlag.Bool("s", false, "Shows a summary of a friendlist")
@@ -37,7 +62,7 @@ func main() {
 	flag.Parse()
 
 	if *steamid != "" {
-		fmt.Fprintf(os.Stdout, "Loaded Steam ID: %s", *steamid)
+		fmt.Fprintf(os.Stdout, "Loaded Steam ID: %s\n", *steamid)
 	} else {
 		fileText, err := os.ReadFile("steamid.txt")
 		if err != nil {
@@ -45,7 +70,7 @@ func main() {
 			os.Exit(1)
 		}
 		*steamid = string(fileText)
-		fmt.Fprintf(os.Stdout, "Loaded Steam ID: %s", *steamid)
+		fmt.Fprintf(os.Stdout, "Loaded Steam ID: %s\n", *steamid)
 	}
 	if *steamid == "" {
 		fmt.Fprintln(os.Stderr, "No SteamID found from flag or local save.")
@@ -64,18 +89,20 @@ func main() {
 					output += fmt.Sprintf("\nTime Created: %s\nCurrently playing: %s\nLocation: %s\n%s", api.UnixToTime(details.TimeCreated), details.GameExtraInfo, details.LocCountryCode, space)
 				}
 			}
-
 		} else if *filter != "" {
-			switch strings.ToLower(*filter) {
+			var lowerFilter string = strings.ToLower(*filter)
+			switch lowerFilter {
 			case "online":
-				output += "Showing whos online:\n"
 				newFriendList = SpecificFriendStatus(friendList, isOnline)
 			case "offline":
-				output += "Showing whos offline:\n"
 				newFriendList = SpecificFriendStatus(friendList, isOffline)
 			case "playing":
-				output += "Showing whos in-game:\n"
 				newFriendList = SpecificFriendStatus(friendList, isPlaying)
+			}
+			if len(newFriendList.DetailedFriendList) == 0 {
+				output += fmt.Sprintf("No one is currently %s.", lowerFilter)
+			} else {
+				output += "Showing whos online:\n"
 			}
 			for _, friend := range newFriendList.DetailedFriendList {
 				output += fmt.Sprintf("%s\nName: %s\nCurrently: %s\nRelationship: %s\n", space, friend.FriendSummary.PlayerSummaryResponse.Players[0].PersonaName, api.PersonaStateStr(friend.FriendSummary.PlayerSummaryResponse.Players[0].PersonaState), friend.FriendDetails.Relationship)

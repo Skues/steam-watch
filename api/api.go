@@ -106,6 +106,16 @@ var apiCalls = map[string]map[string]string{"GetFriendList": {"API Type": "IStea
 
 var key string = os.Getenv("STEAM_API_KEY")
 
+func ValidateSteamID(steamid string) bool {
+	result := GetPlayerSummary(steamid)
+	if len(result.PlayerSummaryResponse.Players) != 0 {
+		return true
+	} else {
+		return false
+	}
+
+}
+
 func GetCommunityState(steamid string) string {
 	result := GetPlayerSummary(steamid)
 	state := CommunityVisibilityState(result.PlayerSummaryResponse.Players[0].CommunityVisibilityState)
