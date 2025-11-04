@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"steam/code/api"
-	"steam/code/tui"
+	"steam-watch/api"
+	"steam-watch/tui"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,8 +23,9 @@ type kv struct {
 
 const space = "~~~~~~~~~~~~~~~"
 
-func Run() {
-	p := tea.NewProgram(tui.New())
+func Run(steamid string) {
+
+	p := tea.NewProgram(tui.New(steamid))
 	m, err := p.Run()
 
 	if err != nil {
@@ -42,7 +43,12 @@ func Run() {
 
 // Main function
 func main() {
-	Run()
+	oldSteamID, error := GetSteamID()
+	if error != nil {
+		fmt.Fprintln(os.Stderr, error)
+		os.Exit(1)
+	}
+	Run(oldSteamID)
 	steamid := flag.String("id", "", "Enter user's SteamID")
 	friendListFlag := flag.NewFlagSet("FL", flag.ExitOnError)
 	summary := friendListFlag.Bool("s", false, "Shows a summary of a friendlist")
@@ -233,5 +239,14 @@ func isPlaying(friend api.DetailedFriend) bool {
 		return true
 	} else {
 		return false
+	}
+}
+
+func GetSteamID() (string, error) {
+	fileText, err := os.ReadFile("steamid.txt")
+	if err != nil {
+		return "", err
+	} else {
+		return string(fileText), nil
 	}
 }

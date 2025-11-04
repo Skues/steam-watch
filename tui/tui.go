@@ -2,7 +2,7 @@ package tui
 
 import (
 	// "fmt"
-	"steam/code/tui/screens"
+	"steam-watch/tui/screens"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -10,10 +10,17 @@ import (
 type RootModel struct {
 	current tea.Model
 	Input   string
+	SteamID string
 }
 
-func New() RootModel {
-	return RootModel{current: screens.InitialChooseModel()}
+func New(steamid string) *RootModel {
+	root := &RootModel{SteamID: steamid}
+	if steamid != "" {
+		root.current = screens.InitialMainMenu(root)
+	} else {
+		root.current = screens.InitialTIModel(root)
+	}
+	return root
 }
 func (m RootModel) Init() tea.Cmd {
 	return m.current.Init()
@@ -23,7 +30,7 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case string:
 		m.Input = msg
-		return screens.InitialSteamID(msg), nil
+		return screens.ShowSteamIDOptions(msg), nil
 		// fmt.Println(m.input)
 		return m, nil
 	}

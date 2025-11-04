@@ -1,4 +1,4 @@
-module steam/code
+module steam-watch
 
 go 1.24.5
 

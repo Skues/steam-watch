@@ -2,7 +2,7 @@ package screens
 
 import (
 	"fmt"
-	"steam/code/api"
+	"steam-watch/api"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -12,7 +12,7 @@ type steamIDCheck struct {
 	valid   bool
 }
 
-func InitialSteamID(steamid string) steamIDCheck {
+func ShowSteamIDOptions(steamid string) tea.Model {
 	return steamIDCheck{steamid: steamid, valid: api.ValidateSteamID(steamid)}
 }
 
