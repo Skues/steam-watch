@@ -26,8 +26,11 @@ func (m steamIDCheck) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.Type {
 		case tea.KeyEnter:
-			return m, tea.Quit
-
+			if m.valid {
+				return InitialMainMenu(m.steamid), nil
+			} else {
+				return InitialTIModel(), nil
+			}
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
 		}

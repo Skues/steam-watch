@@ -23,7 +23,12 @@ type kv struct {
 
 const space = "~~~~~~~~~~~~~~~"
 
-func Run(steamid string) {
+func Run() {
+	steamid, error := GetSteamID()
+	if error != nil {
+		fmt.Fprintln(os.Stderr, error)
+		os.Exit(1)
+	}
 
 	p := tea.NewProgram(tui.New(steamid))
 	m, err := p.Run()
@@ -43,12 +48,7 @@ func Run(steamid string) {
 
 // Main function
 func main() {
-	oldSteamID, error := GetSteamID()
-	if error != nil {
-		fmt.Fprintln(os.Stderr, error)
-		os.Exit(1)
-	}
-	Run(oldSteamID)
+	Run()
 	steamid := flag.String("id", "", "Enter user's SteamID")
 	friendListFlag := flag.NewFlagSet("FL", flag.ExitOnError)
 	summary := friendListFlag.Bool("s", false, "Shows a summary of a friendlist")

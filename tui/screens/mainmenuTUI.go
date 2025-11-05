@@ -1,7 +1,13 @@
 package screens
 
 import (
+	"encoding/json"
 	"fmt"
+	// "log"
+	"os"
+	"steam-watch/api"
+	"sync"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -22,6 +28,7 @@ type mainMenuModel struct {
 
 func InitialMainMenu(steamidinput string) mainMenuModel {
 	steamid = steamidinput
+	SetData(steamidinput)
 	return mainMenuModel{}
 }
 func (m mainMenuModel) Init() tea.Cmd {
@@ -39,7 +46,7 @@ func (m mainMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter", " ":
 			m.choice = mainMenuOptions[m.cursor]
-			return m.choice.action(steamid), nil
+			return m.choice.action(), nil
 
 		// The "up" and "k" keys move the cursor up
 		case "up", "k":
@@ -85,4 +92,55 @@ func (m mainMenuModel) View() string {
 
 	// Send the UI for rendering
 	return s
+}
+
+func CheckData() {
+
+}
+func SetData(steamid string) {
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() {
+		file, err := os.Create("data/playerSummary.json")
+		if err != nil {
+			// log.Fatalln(err)
+		}
+		defer wg.Done()
+		defer file.Close()
+		playerSummary := api.GetPlayerSummary(steamid)
+		encoder := json.NewEncoder(file)
+		err = encoder.Encode(playerSummary)
+		if err != nil {
+			// log.Println(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+	}()
+	go func() {
+		file, _ := os.Create("data/friendList.json")
+		defer wg.Done()
+		defer file.Close()
+		friendList := api.GetFriendList(steamid)
+		encoder := json.NewEncoder(file)
+		err := encoder.Encode(friendList)
+		if err != nil {
+			// log.Println(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}()
+	go func() {
+		file, _ := os.Create("data/gamesList.json")
+		defer wg.Done()
+		defer file.Close()
+		ownedGames := api.GetOwnedGames(steamid)
+		encoder := json.NewEncoder(file)
+		err := encoder.Encode(ownedGames)
+		if err != nil {
+			// log.Println(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}()
 }

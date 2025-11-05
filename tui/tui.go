@@ -16,9 +16,9 @@ type RootModel struct {
 func New(steamid string) *RootModel {
 	root := &RootModel{SteamID: steamid}
 	if steamid != "" {
-		root.current = screens.InitialMainMenu(root)
+		root.current = screens.InitialMainMenu(steamid)
 	} else {
-		root.current = screens.InitialTIModel(root)
+		root.current = screens.InitialTIModel()
 	}
 	return root
 }
@@ -28,11 +28,9 @@ func (m RootModel) Init() tea.Cmd {
 func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-	case string:
-		m.Input = msg
-		return screens.ShowSteamIDOptions(msg), nil
-		// fmt.Println(m.input)
-		return m, nil
+	case screens.SteamIDInput:
+		m.Input = msg.SteamID
+		return screens.ShowSteamIDOptions(msg.SteamID), nil
 	}
 
 	var cmd tea.Cmd

@@ -24,7 +24,7 @@ func (m gameListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "b":
 			// go back to the main menu
-			return InitialMainMenu(), nil
+			return m, tea.Quit
 		}
 	}
 	return m, nil

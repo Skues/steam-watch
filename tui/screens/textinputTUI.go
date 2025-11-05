@@ -11,6 +11,9 @@ type TextInputModel struct {
 	TextInput textinput.Model
 	err       error
 }
+type SteamIDInput struct {
+	SteamID string
+}
 
 func InitialTIModel() TextInputModel {
 	ti := textinput.New()
@@ -63,5 +66,5 @@ func (m TextInputModel) View() string {
 
 func (m TextInputModel) TextSubmitted() tea.Msg {
 
-	return m.TextInput.Value()
+	return SteamIDInput{m.TextInput.Value()}
 }
