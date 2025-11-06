@@ -121,7 +121,8 @@ func SetData(steamid string) {
 		file, _ := os.Create("data/friendList.json")
 		defer wg.Done()
 		defer file.Close()
-		friendList := api.GetFriendList(steamid)
+		friendList := api.FriendListData(steamid)
+
 		encoder := json.NewEncoder(file)
 		err := encoder.Encode(friendList)
 		if err != nil {
@@ -143,4 +144,5 @@ func SetData(steamid string) {
 			os.Exit(1)
 		}
 	}()
+	wg.Wait()
 }

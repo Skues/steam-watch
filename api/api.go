@@ -83,19 +83,6 @@ type DetailedFriendList struct {
 	DetailedFriendList []DetailedFriend
 }
 
-type DetailedFriendTest struct {
-	FriendSteamID    string
-	Relationship     string
-	FriendSince      int64
-	SteamName        string
-	Status           string
-	LastLogoff       int64
-	TimeCreated      int64
-	Location         string
-	CurrentlyPlaying string
-	RecentGames      RecentGames
-}
-
 type DetailedFriend struct {
 	FriendDetails Friend
 	FriendSummary PlayerSummary
