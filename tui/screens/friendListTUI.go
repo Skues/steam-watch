@@ -18,6 +18,7 @@ var docStyle = lipgloss.NewStyle().Margin(1, 2)
 type friendListModel struct {
 	details api.DetailedFriendList
 	list    list.Model
+	steamid string
 }
 
 type friendItem struct {
@@ -31,7 +32,7 @@ func (i friendItem) Title() string {
 }
 func (i friendItem) Description() string {
 	player := i.FriendSummary.PlayerSummaryResponse.Players[0]
-	return fmt.Sprintf("Name: %s\nFriend since: %s\nCurrently: %s\nRelationship: %s\nLast Logoff: %s\n", player.PersonaName, api.UnixToTime(i.FriendDetails.FriendSince), api.PersonaStateStr(player.PersonaState), i.FriendDetails.Relationship, api.UnixToTime(player.LastLogoff))
+	return fmt.Sprintf("Name: %s\nFriend since: %s\nStatus: %s\nRelationship: %s\nLast Logoff: %s\n", player.PersonaName, api.UnixToTime(i.FriendDetails.FriendSince), api.PersonaStateStr(player.PersonaState), i.FriendDetails.Relationship, api.UnixToTime(player.LastLogoff))
 }
 
 func (i friendItem) FilterValue() string {
@@ -40,10 +41,11 @@ func (i friendItem) FilterValue() string {
 
 func ShowFriendList(steamid string) tea.Model {
 	var friendList friendListModel
+	friendList.steamid = steamid
 	fileText, err := os.ReadFile("data/friendList.json")
 
 	if err != nil {
-		api.GetOwnedGames("a")
+		api.GetOwnedGames(steamid)
 		log.Fatalln("HELLO", err)
 		// retrieve data yourself
 	} else {
@@ -79,15 +81,14 @@ func (m friendListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			i, ok := m.list.SelectedItem().(friendItem)
 			if ok {
-				fmt.Println(i.FriendSummary.PlayerSummaryResponse.Players[0].PersonaName)
-				return ShowSelectFriend(i), nil
+				return ShowSelectFriend(m.steamid, i), nil
 			}
 		// These keys should exit the program.
 		case "ctrl+c", "q":
 			return m, tea.Quit
-		case "b":
+		case "esc":
 			// go back to the main menu
-			return m, tea.Quit
+			return InitialMainMenu(m.steamid), nil
 
 		}
 	case tea.WindowSizeMsg:

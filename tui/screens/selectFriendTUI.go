@@ -4,14 +4,25 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	selectFriendStyle = lipgloss.NewStyle()
+	titleStyle        = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).PaddingLeft(2).MarginBottom(1)
+	summaryStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("53")).PaddingLeft(4).MarginBottom(0)
+	helpStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Italic(true).PaddingLeft(2).MarginTop(1)
+	borderStyle       = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderLeft(true).BorderForeground(lipgloss.Color("228"))
 )
 
 type selectFriend struct {
-	friend friendItem
+	friend  friendItem
+	steamid string
 }
 
-func ShowSelectFriend(friend friendItem) tea.Model {
+func ShowSelectFriend(steamid string, friend friendItem) tea.Model {
 	var selectFriend selectFriend
+	selectFriend.steamid = steamid
 	selectFriend.friend = friend
 	return selectFriend
 }
@@ -30,7 +41,7 @@ func (m selectFriend) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "esc":
-			return ShowFriendList("asd"), nil
+			return ShowFriendList(m.steamid), nil
 		}
 	}
 
@@ -38,10 +49,21 @@ func (m selectFriend) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 }
 func (m selectFriend) View() string {
+	tea.ClearScreen()
 	player := m.friend.FriendSummary.PlayerSummaryResponse.Players[0]
-	s := fmt.Sprintf("\n%s Summary:\n", player.PersonaName)
-	s += fmt.Sprintf("Game Status: %s\nTotal Game Count: %v\n", player.GameExtraInfo, m.friend.RecentGames.TotalCount)
-	s += "\n\nPress q to quit"
-	return s
+
+	var gameInfo string
+	if player.GameExtraInfo == "" {
+		gameInfo = "Not in game"
+	} else {
+		gameInfo = player.GameExtraInfo
+	}
+
+	s := lipgloss.JoinVertical(lipgloss.Left, titleStyle.Render(fmt.Sprintf("%s Summary:", player.PersonaName)),
+		summaryStyle.Render(fmt.Sprintf("Game Status: %s\nTotal Game Count: %v", gameInfo, m.friend.RecentGames.TotalCount)),
+		helpStyle.Render("Press q to quit"))
+
+	content := borderStyle.Render(s)
+	return content
 
 }

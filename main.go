@@ -5,11 +5,13 @@ package main
 // https://github.com/charmbracelet/bubbletea
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"sort"
 	"steam-watch/api"
+	"steam-watch/data"
 	"steam-watch/tui"
 	"strings"
 
@@ -24,12 +26,18 @@ type kv struct {
 const space = "~~~~~~~~~~~~~~~"
 
 func Run() {
-	steamid, error := GetSteamID()
+	steamid, error := data.GetSteamID()
+	steamid = strings.TrimSpace(steamid)
 	if error != nil {
-		fmt.Fprintln(os.Stderr, error)
-		os.Exit(1)
-	}
+		if errors.Is(error, os.ErrNotExist) {
+			steamid = ""
+		} else {
+			fmt.Println("here")
+			fmt.Fprintln(os.Stderr, error)
+			os.Exit(1)
+		}
 
+	}
 	p := tea.NewProgram(tui.New(steamid))
 	m, err := p.Run()
 
@@ -180,15 +188,7 @@ func main() {
 		}
 
 	} else {
-		file, err := os.Create("steamid.txt")
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
-		defer file.Close()
-		_, err = file.WriteString(*steamid)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
+		data.WriteSteamID(*steamid)
 	}
 }
 
@@ -239,14 +239,5 @@ func isPlaying(friend api.DetailedFriend) bool {
 		return true
 	} else {
 		return false
-	}
-}
-
-func GetSteamID() (string, error) {
-	fileText, err := os.ReadFile("steamid.txt")
-	if err != nil {
-		return "", err
-	} else {
-		return string(fileText), nil
 	}
 }

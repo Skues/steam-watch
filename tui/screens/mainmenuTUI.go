@@ -3,33 +3,41 @@ package screens
 import (
 	"encoding/json"
 	"fmt"
+
 	// "log"
 	"os"
 	"steam-watch/api"
 	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 var steamid = ""
 
+var (
+	headerStyle = lipgloss.NewStyle()
+	menuOptions = lipgloss.NewStyle()
+	hoverOption = lipgloss.NewStyle().Foreground(lipgloss.Color("168"))
+)
+
 type choice struct {
 	description string
 	title       string
-	action      func() tea.Model
+	action      func(steamid string) tea.Model
 }
 
-var mainMenuOptions = []choice{{"View Player Summary", "PlayerSummary", func() tea.Model { return ShowPlayerSummary(steamid) }}, {"View Friend List", "FriendList", func() tea.Model { return ShowFriendList(steamid) }}, {"View Games List", "GamesList", func() tea.Model { return ShowGamesList(steamid) }}, {"SteamID Options", "SteamIDOptions", func() tea.Model { return ShowSteamIDOptions("test") }}}
+var mainMenuOptions = []choice{{"View Player Summary", "PlayerSummary", func(steamid string) tea.Model { return ShowPlayerSummary(steamid) }}, {"View Friend List", "FriendList", func(steamid string) tea.Model { return ShowFriendList(steamid) }}, {"View Games List", "GamesList", func(steamid string) tea.Model { return ShowGamesList(steamid) }}, {"SteamID Options", "SteamIDOptions", func(steamid string) tea.Model { return ShowSteamIDOptions(steamid) }}}
 
 type mainMenuModel struct {
-	choice choice
-	cursor int
+	choice  choice
+	cursor  int
+	steamid string
 }
 
 func InitialMainMenu(steamidinput string) mainMenuModel {
-	steamid = steamidinput
 	SetData(steamidinput)
-	return mainMenuModel{}
+	return mainMenuModel{steamid: steamidinput}
 }
 func (m mainMenuModel) Init() tea.Cmd {
 	return nil
@@ -46,7 +54,7 @@ func (m mainMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter", " ":
 			m.choice = mainMenuOptions[m.cursor]
-			return m.choice.action(), nil
+			return m.choice.action(m.steamid), nil
 
 		// The "up" and "k" keys move the cursor up
 		case "up", "k":
@@ -59,12 +67,8 @@ func (m mainMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(mainMenuOptions)-1 {
 				m.cursor++
 			}
-
-			// The "enter" key and the spacebar (a literal space) toggle
-			// the selected state for the item that the cursor is pointing at.
 		}
 	case string:
-		fmt.Println(msg)
 		return m, tea.Quit
 	}
 	return m, nil
@@ -72,7 +76,7 @@ func (m mainMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m mainMenuModel) View() string {
 	// The header
-	s := "Steam-Watch\n\nChoose an option:\n\n"
+	s := headerStyle.Render("Steam-Watch\n\nChoose an option:\n\n")
 
 	// Iterate over our choices
 	for i, choice := range mainMenuOptions {
@@ -84,19 +88,21 @@ func (m mainMenuModel) View() string {
 		}
 
 		// Render the row
-		s += fmt.Sprintf("%s %s\n", cursor, choice.description)
+		if cursor == ">" {
+			s += hoverOption.Render(fmt.Sprintf("%s %s", cursor, choice.description)) + "\n"
+
+		} else {
+			s += menuOptions.Render(fmt.Sprintf("%s %s", cursor, choice.description)) + "\n"
+		}
 	}
 
 	// The footer
-	s += "\nPress q to quit.\n"
+	s += helpStyle.Render("\nPress q to quit.\n")
 
 	// Send the UI for rendering
 	return s
 }
 
-func CheckData() {
-
-}
 func SetData(steamid string) {
 	var wg sync.WaitGroup
 	wg.Add(3)

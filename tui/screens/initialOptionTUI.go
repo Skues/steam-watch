@@ -31,7 +31,7 @@ func (m chooseOptionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			m.choice = choices[m.cursor]
 			if m.choice == "Load New SteamID" {
-				return InitialTIModel(), nil
+				return InitialSteamIDInput(), nil
 			}
 			return m, tea.Quit
 

@@ -3,13 +3,13 @@ package screens
 import (
 	"encoding/json"
 	"fmt"
-	// "fmt"
-	"os"
-	"steam-watch/api"
 
+	// "fmt"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"os"
+	"steam-watch/api"
 )
 
 var gameListDocStyle = lipgloss.NewStyle().Margin(1, 2)
@@ -17,6 +17,7 @@ var gameListDocStyle = lipgloss.NewStyle().Margin(1, 2)
 type gameListModel struct {
 	details api.RecentGames
 	list    list.Model
+	steamid string
 }
 type gameItem struct {
 	AppID           int    `json:"appid"`
@@ -34,9 +35,10 @@ func (i gameItem) FilterValue() string { return i.Name }
 
 func ShowGamesList(steamid string) tea.Model {
 	var gameList gameListModel
+	gameList.steamid = steamid
 	fileText, err := os.ReadFile("data/gamesList.json")
 	if err != nil {
-		api.GetOwnedGames("a")
+		api.GetOwnedGames(steamid)
 		// retrieve data yourself
 	} else {
 		json.Unmarshal(fileText, &gameList.details)
@@ -71,7 +73,7 @@ func (m gameListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "esc":
 			// go back to the main menu
-			return m, tea.Quit
+			return InitialMainMenu(m.steamid), nil
 		}
 	case tea.WindowSizeMsg:
 		h, v := gameListDocStyle.GetFrameSize()

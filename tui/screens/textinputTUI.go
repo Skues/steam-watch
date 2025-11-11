@@ -2,6 +2,9 @@ package screens
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,12 +13,13 @@ import (
 type TextInputModel struct {
 	TextInput textinput.Model
 	err       error
+	reason    string
 }
 type SteamIDInput struct {
 	SteamID string
 }
 
-func InitialTIModel() TextInputModel {
+func InitialSteamIDInput() TextInputModel {
 	ti := textinput.New()
 	ti.Placeholder = "111111111111111"
 	ti.Focus()
@@ -40,7 +44,12 @@ func (m TextInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			return m, m.TextSubmitted
+			valid := m.checkInput()
+			if valid {
+				return ShowSteamIDOptions(strings.TrimSpace(m.TextInput.Value())), nil
+			} else {
+				return m, nil
+			}
 
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
@@ -57,14 +66,25 @@ func (m TextInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m TextInputModel) View() string {
-	return fmt.Sprintf(
-		"Enter your SteamID:\n\n%s\n%s",
+	s := fmt.Sprintf(
+		"Enter your SteamID:\n\n%s",
 		m.TextInput.View(),
-		"(esc to quit)",
 	) + "\n"
+	if m.reason != "" {
+		s += fmt.Sprintln(m.reason)
+	}
+	s += fmt.Sprintln("(esc to quit)")
+	return s
 }
+func (m *TextInputModel) checkInput() bool {
+	if utf8.RuneCountInString(m.TextInput.Value()) != 17 {
+		m.reason = "Invalid length of input, a SteamID is 17 characters long."
+		return false
+	} else if _, err := strconv.Atoi(m.TextInput.Value()); err != nil {
+		m.reason = "Invalid input type, must be a number input."
+		return false
+	}
+	m.reason = ""
+	return true
 
-func (m TextInputModel) TextSubmitted() tea.Msg {
-
-	return SteamIDInput{m.TextInput.Value()}
 }

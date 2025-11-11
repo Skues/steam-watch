@@ -11,13 +11,15 @@ import (
 
 type playerSummaryModel struct {
 	details api.PlayerSummary
+	steamid string
 }
 
 func ShowPlayerSummary(steamid string) tea.Model {
 	var playerSummary playerSummaryModel
+	playerSummary.steamid = steamid
 	fileText, err := os.ReadFile("data/playerSummary.json")
 	if err != nil {
-		api.GetPlayerSummary("a")
+		api.GetPlayerSummary(steamid)
 		// retrieve data yourself
 	} else {
 		json.Unmarshal(fileText, &playerSummary.details)
@@ -39,9 +41,9 @@ func (m playerSummaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// These keys should exit the program.
 		case "ctrl+c", "q":
 			return m, tea.Quit
-		case "b":
+		case "esc":
 			// go back to the main menu
-			return m, tea.Quit
+			return InitialMainMenu(m.steamid), nil
 		}
 	}
 

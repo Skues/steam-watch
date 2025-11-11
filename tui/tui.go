@@ -18,7 +18,7 @@ func New(steamid string) *RootModel {
 	if steamid != "" {
 		root.current = screens.InitialMainMenu(steamid)
 	} else {
-		root.current = screens.InitialTIModel()
+		root.current = screens.InitialSteamIDInput()
 	}
 	return root
 }
@@ -30,7 +30,7 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case screens.SteamIDInput:
 		m.Input = msg.SteamID
-		return screens.ShowSteamIDOptions(msg.SteamID), nil
+		return screens.ShowSteamIDOptions(m.SteamID), nil
 	}
 
 	var cmd tea.Cmd
@@ -39,5 +39,5 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m RootModel) View() string {
-	return m.current.View() + "\n\nLast Input: " + m.Input
+	return m.current.View()
 }
